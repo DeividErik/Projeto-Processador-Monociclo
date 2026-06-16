@@ -1,0 +1,38 @@
+/*
+ * NOME DO GRUPO: DEVIVD ERIK DE VASCONCELOS FILHO E FELIPE SANTANA CAVALCANTI
+ * ATIVIDADE: Projeto 02 - 2VA
+ * DISCIPLINA: Arquitetura e Organização de Computadores
+ * SEMESTRE LETIVO: 2026-1
+ * QUESTÃO: Implementação da ULA
+ * DESCRIÇÃO: Unidade Lógica e Aritmética. Realiza operações matemáticas 
+ * e lógicas com base no sinal de controle OP. Gera a flag Zero.
+ */
+
+module ula (
+    input wire [31:0] In1,
+    input wire [31:0] In2,
+    input wire [3:0] OP,
+    output reg [31:0] result,
+    output wire Zero_flag
+);
+
+    // Define a flag zero: será 1 se o resultado for 0, e 0 caso contrário
+    assign Zero_flag = (result == 32'b0) ? 1'b1 : 1'b0;
+
+    // Bloco combinacional para determinar a operação
+    always @(*) begin
+        case (OP)
+            4'b0000: result = In1 + In2;          // ADD
+            4'b0001: result = In1 - In2;          // SUB
+            4'b0010: result = In1 & In2;          // AND
+            4'b0011: result = In1 | In2;          // OR
+            4'b0100: result = In1 ^ In2;          // XOR
+            4'b0101: result = ~(In1 | In2);       // NOR
+            4'b0110: result = ($signed(In1) < $signed(In2)) ? 32'b1 : 32'b0; // SLT (Signed)
+            4'b0111: result = (In1 < In2) ? 32'b1 : 32'b0; // SLTU (Unsigned)
+            
+            default: result = 32'b0;
+        endcase
+    end
+
+endmodule
