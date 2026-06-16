@@ -1,0 +1,27 @@
+/*
+ * NOME DO GRUPO: DEVIVD ERIK DE VASCONCELOS FILHO E FELIPE SANTANA CAVALCANTI
+ * ATIVIDADE: Projeto 02 - 2VA
+ * DISCIPLINA: Arquitetura e Organização de Computadores
+ * SEMESTRE LETIVO: 2026-1
+ * QUESTÃO: Implementação do Contador de Programa (PC)
+ * DESCRIÇÃO: Registrador síncrono de 32 bits responsável por armazenar 
+ * o endereço da instrução atual. É atualizado na borda de subida do clock.
+ */
+
+module pc (
+    input wire clock,
+  	input wire reset,
+    input wire [31:0] nextPC,
+    output reg [31:0] PC
+);
+
+    // Bloco always síncrono: atualiza o PC na borda de subida do clock
+  always @(posedge clock or posedge reset) begin
+        if (reset) begin
+            PC <= 32'b0;      // Se o reset for ativado, o PC vai para 0
+        end else begin
+            PC <= nextPC;     // Caso contrário, continua normalmente
+        end
+    end
+
+endmodule
