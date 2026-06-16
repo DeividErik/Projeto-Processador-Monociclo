@@ -21,7 +21,7 @@ module mips (
     wire [31:0] pc_current, pc_next, pc_plus_4, branch_target, jump_target;
     wire [31:0] instruction;
     
-    // Sinais de Controle (Atualizados)
+    // Sinais de Controle
     wire RegDst, ALUSrc, MemtoReg, RegWrite, MemRead, MemWrite, Branch, BranchBne;
     wire Jump, Jal, ZeroExt, jr_sig;
     wire [3:0] ALUOp; // Aumentado para 4 bits
