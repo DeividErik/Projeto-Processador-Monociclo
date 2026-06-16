@@ -1,11 +1,10 @@
 /*
- * NOME DO GRUPO: DEVIVD ERIK DE VASCONCELOS FILHO E FELIPE SANTANA CAVALCANTI
+ * NOME DO GRUPO: DEIVID ERIK DE VASCONCELOS FILHO E FELIPE SANTANA CAVALCANTI
  * ATIVIDADE: Projeto 02 - 2VA
  * DISCIPLINA: Arquitetura e Organização de Computadores
  * SEMESTRE LETIVO: 2026-1
  * QUESTÃO: Implementação da Unidade de Controle (ctrl)
  * DESCRIÇÃO: Gera os sinais de controle principais baseados no opcode da instrução.
- * Adicionados os sinais Jump e BranchBne conforme necessidade do projeto.
  */
 
 module ctrl (
@@ -18,8 +17,10 @@ module ctrl (
     output reg MemWrite,
     output reg Branch,
     output reg BranchBne, // Sinal extra para o BNE
-    output reg Jump,      // Sinal extra para as instruções tipo J
-    output reg [2:0] ALUOp // 3 bits para acomodar todas as operações I-Type
+    output reg Jump,      // Sinal extra para as instruções tipo J (j, jal)
+    output reg Jal,       // Sinal exclusivo para o Jump and Link
+    output reg ZeroExt,   // Sinal para forçar extensão de zero (andi, ori, xori)
+    output reg [3:0] ALUOp // Aumentado para 4 bits para acomodar todas as operações I-Type
 );
 
     always @(*) begin
@@ -33,13 +34,15 @@ module ctrl (
         Branch    = 1'b0;
         BranchBne = 1'b0;
         Jump      = 1'b0;
-        ALUOp     = 3'b000;
+        Jal       = 1'b0;
+        ZeroExt   = 1'b0;
+        ALUOp     = 4'b0000;
 
         case (Opcode)
-            6'b000000: begin // R-Type (add, sub, and, etc.)
+            6'b000000: begin // R-Type (add, sub, and, sll, sra, jr, etc.)
                 RegDst   = 1'b1;
                 RegWrite = 1'b1;
-                ALUOp    = 3'b010; // Código para a ula_ctrl olhar o Funct
+                ALUOp    = 4'b0010; // Código genérico feito para a ula_ctrl olhar o Funct
             end
             
             6'b100011: begin // lw (Load Word)
@@ -47,35 +50,79 @@ module ctrl (
                 MemtoReg = 1'b1;
                 RegWrite = 1'b1;
                 MemRead  = 1'b1;
-                ALUOp    = 3'b000; // ULA deve somar (Endereço-base + offset)
+                ALUOp    = 4'b0000; // ULA deve somar
             end
             
             6'b101011: begin // sw (Store Word)
                 ALUSrc   = 1'b1;
                 MemWrite = 1'b1;
-                ALUOp    = 3'b000; // ULA deve somar (Endereço-base + offset)
+                ALUOp    = 4'b0000; // ULA deve somar
             end
             
             6'b000100: begin // beq (Branch on Equal)
                 Branch   = 1'b1;
-                ALUOp    = 3'b001; // ULA deve subtrair para comparar
+                ALUOp    = 4'b0001; // ULA deve subtrair
             end
 
             6'b000101: begin // bne (Branch on Not Equal)
                 BranchBne= 1'b1;
-                ALUOp    = 3'b001; // ULA deve subtrair para comparar
+                ALUOp    = 4'b0001; // ULA deve subtrair
             end
             
             6'b001000: begin // addi (Add Immediate)
                 ALUSrc   = 1'b1;
                 RegWrite = 1'b1;
-                ALUOp    = 3'b000; // Força a soma
+                ALUOp    = 4'b0000; // ULA deve somar
+            end
+
+            6'b001100: begin // andi (And Immediate)
+                ALUSrc   = 1'b1;
+                RegWrite = 1'b1;
+                ZeroExt  = 1'b1;    // Usa extensão de zero
+                ALUOp    = 4'b0011; // Código para AND
+            end
+
+            6'b001101: begin // ori (Or Immediate)
+                ALUSrc   = 1'b1;
+                RegWrite = 1'b1;
+                ZeroExt  = 1'b1;    // Usa extensão de zero
+                ALUOp    = 4'b0100; // Código para OR
+            end
+
+            6'b001110: begin // xori (Xor Immediate)
+                ALUSrc   = 1'b1;
+                RegWrite = 1'b1;
+                ZeroExt  = 1'b1;    // Usa extensão de zero
+                ALUOp    = 4'b0101; // Código para XOR
+            end
+
+            6'b001010: begin // slti (Set Less Than Immediate - Signed)
+                ALUSrc   = 1'b1;
+                RegWrite = 1'b1;
+                ALUOp    = 4'b0110; // Código para SLT (Signed)
+            end
+
+            6'b001011: begin // sltiu (Set Less Than Immediate Unsigned)
+                ALUSrc   = 1'b1;
+                RegWrite = 1'b1;
+                ALUOp    = 4'b0111; // Código para SLTU (Unsigned)
+            end
+
+            6'b001111: begin // lui (Load Upper Immediate)
+                ALUSrc   = 1'b1;
+                RegWrite = 1'b1;
+                ALUOp    = 4'b1000; // Código especial para o LUI
             end
 
             6'b000010: begin // j (Jump)
                 Jump     = 1'b1;
             end
-            
+
+            6'b000011: begin // jal (Jump and Link)
+                Jump     = 1'b1;
+                Jal      = 1'b1;    // Ativa o caminho de dados do jal
+                RegWrite = 1'b1;    // Permite escrever PC+8 no $31
+            end
             
             default: ; // Mantém os valores padrão
         endcase
