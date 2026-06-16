@@ -1,0 +1,25 @@
+/*
+ * NOME DO GRUPO: DEVIVD ERIK DE VASCONCELOS FILHO E FELIPE SANTANA CAVALCANTI
+ * ATIVIDADE: Projeto 02 - 2VA
+ * DISCIPLINA: Arquitetura e Organização de Computadores
+ * SEMESTRE LETIVO: 2026-1
+ * QUESTÃO: Implementação da Memória de Instrução (i_mem)
+ * DESCRIÇÃO: Memória ROM assíncrona e parametrizável que armazena as instruções.
+ * Lê o programa de um arquivo de texto 'instruction.list' via $readmemb.
+ */
+
+module i_mem (
+    input wire [31:0] address, // Endereço fornecido pelo PC
+    output wire [31:0] i_out   // Instrução lida
+);
+
+    // Array de memória ROM com tamanho fixo (256 posições) 
+    reg [31:0] memory [0:255];
+
+    initial begin
+        $readmemb("instruction.list", memory);
+    end
+
+    assign i_out = memory[address[31:2]];
+
+endmodule
