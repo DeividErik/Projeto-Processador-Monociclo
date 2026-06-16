@@ -1,0 +1,30 @@
+/*
+ * NOME DO GRUPO: DEVIVD ERIK DE VASCONCELOS FILHO E FELIPE SANTANA CAVALCANTI
+ * ATIVIDADE: Projeto 02 - 2VA
+ * DISCIPLINA: Arquitetura e Organização de Computadores
+ * SEMESTRE LETIVO: 2026-1
+ * QUESTÃO: Implementação da Memória de Dados (d_mem)
+ * DESCRIÇÃO: Memória RAM assíncrona. Lê dados quando MemRead é 1 e 
+ * escreve dados na posição especificada quando MemWrite é 1.
+ */
+
+module d_mem (
+    input wire [31:0] Address,
+    input wire [31:0] WriteData,
+    input wire MemWrite,
+    input wire MemRead,
+    output wire [31:0] ReadData
+);
+
+    // Array de memória RAM com tamanho fixo (256 posições)
+    reg [31:0] memory [0:255];
+
+    assign ReadData = (MemRead) ? memory[Address[31:2]] : 32'bz;
+
+    always @(*) begin
+        if (MemWrite) begin
+            memory[Address[31:2]] = WriteData;
+        end
+    end
+
+endmodule
