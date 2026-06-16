@@ -1,0 +1,155 @@
+/*
+ * NOME DO GRUPO: DEVIVD ERIK DE VASCONCELOS FILHO E FELIPE SANTANA CAVALCANTI
+ * ATIVIDADE: Projeto 02 - 2VA
+ * DISCIPLINA: Arquitetura e Organização de Computadores
+ * SEMESTRE LETIVO: 2026-1
+ * QUESTÃO: Núcleo MIPS (Top-level)
+ * DESCRIÇÃO: Integra todos os módulos do processador MIPS monociclo,
+ * incluindo multiplexadores, somadores e lógica de desvio.
+ */
+
+module mips (
+    input wire clock,
+    input wire reset,
+    output wire [31:0] current_pc_out,
+    output wire [31:0] alu_result_out,
+    output wire [31:0] d_mem_out
+);
+
+    // ==========================================
+    // FIOS DE INTERCONEXÃO (WIRES)
+    // ==========================================
+    wire [31:0] pc_current, pc_next, pc_plus_4, branch_target, jump_target;
+    wire [31:0] instruction;
+    
+    // Sinais de Controle
+    wire RegDst, ALUSrc, MemtoReg, RegWrite, MemRead, MemWrite, Branch, BranchBne, Jump;
+    wire [2:0] ALUOp;
+    wire [3:0] ULA_Operation;
+    
+    // Fios do RegFile
+    wire [4:0] write_reg_addr;
+    wire [31:0] write_reg_data;
+    wire [31:0] read_data_1, read_data_2;
+    
+    // Fios da ULA e Memória
+    wire [31:0] alu_in_2, alu_result;
+    wire zero_flag;
+    wire [31:0] mem_read_data;
+    
+    // Extensão de Sinal
+    wire [31:0] sign_ext_imm;
+    assign sign_ext_imm = {{16{instruction[15]}}, instruction[15:0]};
+
+    // ==========================================
+    // ATRIBUIÇÃO DAS SAÍDAS DO TOP-LEVEL
+    // ==========================================
+    assign current_pc_out = pc_current;
+    assign alu_result_out = alu_result;
+    assign d_mem_out = mem_read_data;
+
+    // ==========================================
+    // INSTANCIAÇÃO DOS MÓDULOS
+    // ==========================================
+
+    // 1. Contador de Programa (PC)
+    pc pc_inst (
+        .clock(clock),
+      .reset(reset),
+        .nextPC(pc_next),
+        .PC(pc_current)
+    );
+
+    // 2. Memória de Instrução
+    i_mem imem_inst (
+        .address(pc_current),
+        .i_out(instruction)
+    );
+
+    // 3. Unidade de Controle Principal
+    ctrl control_inst (
+        .Opcode(instruction[31:26]),
+        .RegDst(RegDst),
+        .ALUSrc(ALUSrc),
+        .MemtoReg(MemtoReg),
+        .RegWrite(RegWrite),
+        .MemRead(MemRead),
+        .MemWrite(MemWrite),
+        .Branch(Branch),
+        .BranchBne(BranchBne),
+        .Jump(Jump),
+        .ALUOp(ALUOp)
+    );
+
+    // MUX: Destino da Escrita no Registrador (RegDst)
+    assign write_reg_addr = (RegDst) ? instruction[15:11] : instruction[20:16];
+
+    // MUX: Dado a ser escrito no registrador (MemtoReg)
+    assign write_reg_data = (MemtoReg) ? mem_read_data : alu_result;
+
+    // 4. Banco de Registradores
+    regfile regfile_inst (
+        .Clock(clock),
+        .Reset(reset),
+        .RegWrite(RegWrite),
+        .ReadAddr1(instruction[25:21]),
+        .ReadAddr2(instruction[20:16]),
+        .WriteAddr(write_reg_addr),
+        .WriteData(write_reg_data),
+        .ReadData1(read_data_1),
+        .ReadData2(read_data_2)
+    );
+
+    // 5. Controle da ULA
+    ula_ctrl ula_control_inst (
+        .ALUOp(ALUOp),
+        .Funct(instruction[5:0]),
+        .OP(ULA_Operation)
+    );
+
+    // MUX: Entrada 2 da ULA (ALUSrc)
+    assign alu_in_2 = (ALUSrc) ? sign_ext_imm : read_data_2;
+
+    // 6. ULA
+    ula ula_inst (
+        .In1(read_data_1),
+        .In2(alu_in_2),
+        .OP(ULA_Operation),
+        .result(alu_result),
+        .Zero_flag(zero_flag)
+    );
+
+    // 7. Memória de Dados
+    d_mem dmem_inst (
+        .Address(alu_result),
+        .WriteData(read_data_2),
+        .MemWrite(MemWrite),
+        .MemRead(MemRead),
+        .ReadData(mem_read_data)
+    );
+
+    // ==========================================
+    // LÓGICA DE CÁLCULO DO PRÓXIMO PC
+    // ==========================================
+    
+    // Somador PC + 4
+    assign pc_plus_4 = pc_current + 32'd4;
+    
+    // Somador do Branch (PC + 4 + (Imediato << 2))
+    assign branch_target = pc_plus_4 + (sign_ext_imm << 2);
+    
+    // Lógica para decidir se o Branch ocorre (BEQ ou BNE)
+    wire take_branch;
+    assign take_branch = (Branch & zero_flag) | (BranchBne & ~zero_flag);
+    
+    // MUX do Branch
+    wire [31:0] pc_after_branch;
+    assign pc_after_branch = (take_branch) ? branch_target : pc_plus_4;
+    
+    // Cálculo do Jump Target
+    assign jump_target = {pc_plus_4[31:28], instruction[25:0], 2'b00};
+    
+    // MUX final do PC (Jump vs Branch/PC+4)
+    assign pc_next = (Jump) ? jump_target : pc_after_branch;
+
+endmodule
