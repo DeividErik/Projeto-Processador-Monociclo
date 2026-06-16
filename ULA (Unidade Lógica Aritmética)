@@ -1,17 +1,18 @@
 /*
- * NOME DO GRUPO: DEVIVD ERIK DE VASCONCELOS FILHO E FELIPE SANTANA CAVALCANTI
+ * NOME DO GRUPO: DEIVID ERIK DE VASCONCELOS FILHO E FELIPE SANTANA CAVALCANTI
  * ATIVIDADE: Projeto 02 - 2VA
  * DISCIPLINA: Arquitetura e Organização de Computadores
  * SEMESTRE LETIVO: 2026-1
  * QUESTÃO: Implementação da ULA
  * DESCRIÇÃO: Unidade Lógica e Aritmética. Realiza operações matemáticas 
- * e lógicas com base no sinal de controle OP. Gera a flag Zero.
+ * e lógicas com base no sinal de controle OP.
  */
 
 module ula (
     input wire [31:0] In1,
     input wire [31:0] In2,
-    input wire [3:0] OP,
+    input wire [4:0]  shamt, //Valor do deslocamento (bits 10 a 6 da instrução)
+    input wire [3:0]  OP,
     output reg [31:0] result,
     output wire Zero_flag
 );
@@ -22,14 +23,30 @@ module ula (
     // Bloco combinacional para determinar a operação
     always @(*) begin
         case (OP)
-            4'b0000: result = In1 + In2;          // ADD
-            4'b0001: result = In1 - In2;          // SUB
-            4'b0010: result = In1 & In2;          // AND
-            4'b0011: result = In1 | In2;          // OR
-            4'b0100: result = In1 ^ In2;          // XOR
+            4'b0000: result = In1 + In2;          // ADD / LW / SW / ADDI
+            4'b0001: result = In1 - In2;          // SUB / BEQ / BNE
+            4'b0010: result = In1 & In2;          // AND / ANDI
+            4'b0011: result = In1 | In2;          // OR / ORI
+            4'b0100: result = In1 ^ In2;          // XOR / XORI
             4'b0101: result = ~(In1 | In2);       // NOR
-            4'b0110: result = ($signed(In1) < $signed(In2)) ? 32'b1 : 32'b0; // SLT (Signed)
-            4'b0111: result = (In1 < In2) ? 32'b1 : 32'b0; // SLTU (Unsigned)
+            4'b0110: result = ($signed(In1) < $signed(In2)) ? 32'b1 : 32'b0; // SLT / SLTI
+            4'b0111: result = (In1 < In2) ? 32'b1 : 32'b0; // SLTU / SLTIU
+            
+            // Operações de Deslocamento (Shifts)
+            // No MIPS, quem sofre o shift é o In2 (registrador rt)
+            4'b1000: result = In2 << shamt;                       // SLL  (Lógico para a esquerda, usa shamt estático)
+            4'b1001: result = In2 >> shamt;                       // SRL  (Lógico para a direita)
+            4'b1010: result = $signed(In2) >>> shamt;             // SRA  (Aritmético para a direita - mantém o sinal)
+            
+            // Operações de Deslocamento Variável (Shift Variable)
+            // O valor do deslocamento vem dos 5 bits menos significativos do In1 (registrador rs)
+            4'b1011: result = In2 << In1[4:0];                    // SLLV
+            4'b1100: result = In2 >> In1[4:0];                    // SRLV
+            4'b1101: result = $signed(In2) >>> In1[4:0];          // SRAV
+            
+            // Load Upper Immediate (LUI)
+            // Joga os 16 bits do imediato (que estão no In2) para o topo, e preenche o resto com zeros
+            4'b1110: result = {In2[15:0], 16'b0};                 
             
             default: result = 32'b0;
         endcase
