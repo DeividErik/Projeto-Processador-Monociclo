@@ -1,25 +1,27 @@
 /*
- * NOME DO GRUPO: DEVIVD ERIK DE VASCONCELOS FILHO E FELIPE SANTANA CAVALCANTI
+ * NOME DO GRUPO: DEIVID ERIK DE VASCONCELOS FILHO E FELIPE SANTANA CAVALCANTI
  * ATIVIDADE: Projeto 02 - 2VA
  * DISCIPLINA: Arquitetura e Organização de Computadores
  * SEMESTRE LETIVO: 2026-1
  * QUESTÃO: Implementação do Controle da ULA (ula_ctrl)
- * DESCRIÇÃO: Define a operação exata (OP) de 4 bits que a ULA executará,
- * combinando o ALUOp da Unidade de Controle com o campo Funct da instrução.
+ * DESCRIÇÃO: Define a operação exata (OP) de 4 bits que a ULA executará.
  */
 
 module ula_ctrl (
-    input wire [2:0] ALUOp,
+    input wire [3:0] ALUOp, // utiliza 4 bits
     input wire [5:0] Funct,
-    output reg [3:0] OP // Saída de 4 bits direto para a entrada OP da ULA
+    output reg [3:0] OP,    // Saída para a ULA
+    output reg jr_sig       // Sinal extra para avisar o mips.v que é um "jr"
 );
 
     always @(*) begin
+        jr_sig = 1'b0; // Padrão é 0 (não é jump register)
+        
         case (ALUOp)
-            3'b000: OP = 4'b0000; // Soma forçada (usada para lw, sw, addi)
-            3'b001: OP = 4'b0001; // Subtração forçada (usada para beq, bne)
+            4'b0000: OP = 4'b0000; // Soma forçada (lw, sw, addi)
+            4'b0001: OP = 4'b0001; // Subtração forçada (beq, bne)
             
-            3'b010: begin         // Tipo R: depende do campo Funct
+            4'b0010: begin         // Tipo R: depende do campo Funct
                 case (Funct)
                     6'b100000: OP = 4'b0000; // add
                     6'b100010: OP = 4'b0001; // sub
@@ -29,12 +31,33 @@ module ula_ctrl (
                     6'b100111: OP = 4'b0101; // nor
                     6'b101010: OP = 4'b0110; // slt
                     6'b101011: OP = 4'b0111; // sltu
-                    // Adicione os códigos de Funct para sll, srl, jr, etc.
+                    
+                    // Instruções de Deslocamento (Shifts)
+                    6'b000000: OP = 4'b1000; // sll  (Shift Left Logical)
+                    6'b000010: OP = 4'b1001; // srl  (Shift Right Logical)
+                    6'b000011: OP = 4'b1010; // sra  (Shift Right Arithmetic)
+                    6'b000100: OP = 4'b1011; // sllv (Shift Left Logical Variable)
+                    6'b000110: OP = 4'b1100; // srlv (Shift Right Logical Variable)
+                    6'b000111: OP = 4'b1101; // srav (Shift Right Arithmetic Variable)
+                    
+                    // Jump Register (jr)
+                    6'b001000: begin 
+                        OP = 4'b0000;  // A conta da ULA não importa
+                        jr_sig = 1'b1; // Mas avisamos o processador que é um pulo
+                    end
+                    
                     default: OP = 4'b0000; 
                 endcase
             end
             
-            
+            // Operações Imediatas (I-Type) mapeadas pelo ctrl.v
+            4'b0011: OP = 4'b0010; // andi (força AND)
+            4'b0100: OP = 4'b0011; // ori  (força OR)
+            4'b0101: OP = 4'b0100; // xori (força XOR)
+            4'b0110: OP = 4'b0110; // slti (força SLT)
+            4'b0111: OP = 4'b0111; // sltiu(força SLTU)
+            4'b1000: OP = 4'b1110; // lui  (operação especial de carregar topo)
+
             default: OP = 4'b0000;
         endcase
     end
