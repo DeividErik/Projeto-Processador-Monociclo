@@ -1,0 +1,42 @@
+/*
+ * NOME DO GRUPO: DEVIVD ERIK DE VASCONCELOS FILHO E FELIPE SANTANA CAVALCANTI
+ * ATIVIDADE: Projeto 02 - 2VA
+ * DISCIPLINA: Arquitetura e Organização de Computadores
+ * SEMESTRE LETIVO: 2026-1
+ * QUESTÃO: Implementação do Controle da ULA (ula_ctrl)
+ * DESCRIÇÃO: Define a operação exata (OP) de 4 bits que a ULA executará,
+ * combinando o ALUOp da Unidade de Controle com o campo Funct da instrução.
+ */
+
+module ula_ctrl (
+    input wire [2:0] ALUOp,
+    input wire [5:0] Funct,
+    output reg [3:0] OP // Saída de 4 bits direto para a entrada OP da ULA
+);
+
+    always @(*) begin
+        case (ALUOp)
+            3'b000: OP = 4'b0000; // Soma forçada (usada para lw, sw, addi)
+            3'b001: OP = 4'b0001; // Subtração forçada (usada para beq, bne)
+            
+            3'b010: begin         // Tipo R: depende do campo Funct
+                case (Funct)
+                    6'b100000: OP = 4'b0000; // add
+                    6'b100010: OP = 4'b0001; // sub
+                    6'b100100: OP = 4'b0010; // and
+                    6'b100101: OP = 4'b0011; // or
+                    6'b100110: OP = 4'b0100; // xor
+                    6'b100111: OP = 4'b0101; // nor
+                    6'b101010: OP = 4'b0110; // slt
+                    6'b101011: OP = 4'b0111; // sltu
+                    // Adicione os códigos de Funct para sll, srl, jr, etc.
+                    default: OP = 4'b0000; 
+                endcase
+            end
+            
+            
+            default: OP = 4'b0000;
+        endcase
+    end
+
+endmodule
