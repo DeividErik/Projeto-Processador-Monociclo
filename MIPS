@@ -1,11 +1,10 @@
 /*
- * NOME DO GRUPO: DEVIVD ERIK DE VASCONCELOS FILHO E FELIPE SANTANA CAVALCANTI
+ * NOME DO GRUPO: DEIVID ERIK DE VASCONCELOS FILHO E FELIPE SANTANA CAVALCANTI
  * ATIVIDADE: Projeto 02 - 2VA
  * DISCIPLINA: Arquitetura e Organização de Computadores
  * SEMESTRE LETIVO: 2026-1
  * QUESTÃO: Núcleo MIPS (Top-level)
- * DESCRIÇÃO: Integra todos os módulos do processador MIPS monociclo,
- * incluindo multiplexadores, somadores e lógica de desvio.
+ * DESCRIÇÃO: Integra todos os módulos do processador MIPS monociclo.
  */
 
 module mips (
@@ -22,9 +21,10 @@ module mips (
     wire [31:0] pc_current, pc_next, pc_plus_4, branch_target, jump_target;
     wire [31:0] instruction;
     
-    // Sinais de Controle
-    wire RegDst, ALUSrc, MemtoReg, RegWrite, MemRead, MemWrite, Branch, BranchBne, Jump;
-    wire [2:0] ALUOp;
+    // Sinais de Controle (Atualizados)
+    wire RegDst, ALUSrc, MemtoReg, RegWrite, MemRead, MemWrite, Branch, BranchBne;
+    wire Jump, Jal, ZeroExt, jr_sig;
+    wire [3:0] ALUOp; // Aumentado para 4 bits
     wire [3:0] ULA_Operation;
     
     // Fios do RegFile
@@ -37,9 +37,12 @@ module mips (
     wire zero_flag;
     wire [31:0] mem_read_data;
     
-    // Extensão de Sinal
-    wire [31:0] sign_ext_imm;
-    assign sign_ext_imm = {{16{instruction[15]}}, instruction[15:0]};
+    // Extensões de Imediato (Sinal e Zero)
+    wire [31:0] sign_ext_imm = {{16{instruction[15]}}, instruction[15:0]};
+    wire [31:0] zero_ext_imm = {16'b0, instruction[15:0]};
+    
+    // MUX: Decide entre Extensão de Zero (ANDI, ORI, XORI) ou Extensão de Sinal
+    wire [31:0] ext_imm = (ZeroExt) ? zero_ext_imm : sign_ext_imm;
 
     // ==========================================
     // ATRIBUIÇÃO DAS SAÍDAS DO TOP-LEVEL
@@ -55,7 +58,7 @@ module mips (
     // 1. Contador de Programa (PC)
     pc pc_inst (
         .clock(clock),
-      .reset(reset),
+        .reset(reset),
         .nextPC(pc_next),
         .PC(pc_current)
     );
@@ -78,14 +81,21 @@ module mips (
         .Branch(Branch),
         .BranchBne(BranchBne),
         .Jump(Jump),
+        .Jal(Jal),             // Fio conectado
+        .ZeroExt(ZeroExt),     // Fio conectado
         .ALUOp(ALUOp)
     );
 
-    // MUX: Destino da Escrita no Registrador (RegDst)
-    assign write_reg_addr = (RegDst) ? instruction[15:11] : instruction[20:16];
+    // PC + 4 (Usado para o próximo PC e para salvar no $ra durante o JAL)
+    assign pc_plus_4 = pc_current + 32'd4;
 
-    // MUX: Dado a ser escrito no registrador (MemtoReg)
-    assign write_reg_data = (MemtoReg) ? mem_read_data : alu_result;
+    // MUX: Destino da Escrita no Registrador
+    // Se for JAL, força o registrador 31 ($ra). Senão, obedece RegDst (rt ou rd)
+    assign write_reg_addr = (Jal) ? 5'd31 : ((RegDst) ? instruction[15:11] : instruction[20:16]);
+
+    // MUX: Dado a ser escrito no registrador
+    // Se for JAL, guarda o PC+4. Senão, obedece MemtoReg (Memória ou ULA)
+    assign write_reg_data = (Jal) ? pc_plus_4 : ((MemtoReg) ? mem_read_data : alu_result);
 
     // 4. Banco de Registradores
     regfile regfile_inst (
@@ -104,16 +114,18 @@ module mips (
     ula_ctrl ula_control_inst (
         .ALUOp(ALUOp),
         .Funct(instruction[5:0]),
-        .OP(ULA_Operation)
+        .OP(ULA_Operation),
+        .jr_sig(jr_sig)        // Fio conectado
     );
 
-    // MUX: Entrada 2 da ULA (ALUSrc)
-    assign alu_in_2 = (ALUSrc) ? sign_ext_imm : read_data_2;
+    // MUX: Entrada 2 da ULA (Usa o fio ext_imm)
+    assign alu_in_2 = (ALUSrc) ? ext_imm : read_data_2;
 
     // 6. ULA
     ula ula_inst (
         .In1(read_data_1),
         .In2(alu_in_2),
+        .shamt(instruction[10:6]), // Passa os 5 bits de shift direto para a ULA
         .OP(ULA_Operation),
         .result(alu_result),
         .Zero_flag(zero_flag)
@@ -132,9 +144,6 @@ module mips (
     // LÓGICA DE CÁLCULO DO PRÓXIMO PC
     // ==========================================
     
-    // Somador PC + 4
-    assign pc_plus_4 = pc_current + 32'd4;
-    
     // Somador do Branch (PC + 4 + (Imediato << 2))
     assign branch_target = pc_plus_4 + (sign_ext_imm << 2);
     
@@ -149,7 +158,11 @@ module mips (
     // Cálculo do Jump Target
     assign jump_target = {pc_plus_4[31:28], instruction[25:0], 2'b00};
     
-    // MUX final do PC (Jump vs Branch/PC+4)
-    assign pc_next = (Jump) ? jump_target : pc_after_branch;
+    // MUX do JR: Se for JR, pula para o endereço no registrador (ReadData1)
+    wire [31:0] pc_after_jr;
+    assign pc_after_jr = (jr_sig) ? read_data_1 : pc_after_branch;
+    
+    // MUX final do PC (Jump vs Jump_Register/Branch/PC+4)
+    assign pc_next = (Jump) ? jump_target : pc_after_jr;
 
 endmodule
