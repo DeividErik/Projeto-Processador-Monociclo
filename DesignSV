@@ -1,0 +1,9 @@
+`timescale 1ns / 1ps
+`include "regfile.v"
+`include "ula.v"
+`include "i_mem.v"
+`include "crtl.v"
+`include "ula_ctrl.v"
+`include "d_men.v"
+`include "mips.v"
+`include "pc_control.v"
