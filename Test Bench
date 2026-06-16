@@ -1,0 +1,43 @@
+`timescale 1ns / 1ps
+
+module tb_mips;
+
+    // Entradas do processador
+    reg clock;
+    reg reset;
+
+    // Saídas do processador
+    wire [31:0] pc_out;
+    wire [31:0] alu_out;
+    wire [31:0] d_mem_out;
+
+    // Instancia o módulo Top-Level
+    mips mips_inst (
+        .clock(clock),
+        .reset(reset),
+        .current_pc_out(pc_out),
+        .alu_result_out(alu_out),
+        .d_mem_out(d_mem_out)
+    );
+
+    // Geração do Clock
+    always #5 clock = ~clock;
+
+    // Bloco inicial (A mágica acontece aqui)
+    initial begin
+        $dumpfile("dump.vcd");
+        $dumpvars(0, tb_mips);
+
+        clock = 0;
+        reset = 1; 
+
+        // Solta o reset
+        #10 reset = 0;
+
+        // Roda por 2000 nanosegundos (tempo suficiente para o teste do professor)
+        #2000;
+
+        $finish;
+    end
+
+endmodule
