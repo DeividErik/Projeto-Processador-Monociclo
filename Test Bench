@@ -23,7 +23,7 @@ module tb_mips;
     // Geração do Clock
     always #5 clock = ~clock;
 
-    // Bloco inicial (A mágica acontece aqui)
+    // Bloco inicial 
     initial begin
         $dumpfile("dump.vcd");
         $dumpvars(0, tb_mips);
@@ -34,7 +34,7 @@ module tb_mips;
         // Solta o reset
         #10 reset = 0;
 
-        // Roda por 2000 nanosegundos (tempo suficiente para o teste do professor)
+        // Roda por 2000 nanosegundos
         #2000;
 
         $finish;
