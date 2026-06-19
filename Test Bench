@@ -1,3 +1,13 @@
+/*
+ * NOME DO GRUPO: DEVIVD ERIK DE VASCONCELOS FILHO E FELIPE SANTANA CAVALCANTI
+ * ATIVIDADE: Projeto 02 - 2VA
+ * DISCIPLINA: Arquitetura e Organização de Computadores
+ * SEMESTRE LETIVO: 2026-1
+ * QUESTÃO: Testbench do MIPS
+ * DESCRIÇÃO: Gera o sinal de clock, aplica o reset inicial e 
+ * inicia a simulação do processador, gravando os dados para o gráfico (EPWave).
+ */
+
 `timescale 1ns / 1ps
 
 module tb_mips;
