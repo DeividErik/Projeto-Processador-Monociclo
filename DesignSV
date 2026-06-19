@@ -1,3 +1,5 @@
+//ATENÇÃO: adaptar a partir do nome dos artigos carregados na IDE. 
+
 `timescale 1ns / 1ps
 `include "regfile.v"
 `include "ula.v"
